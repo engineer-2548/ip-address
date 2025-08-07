@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subnet Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #F2F7FA;
+        }
+        .brand-blue-darker { color: #005082; }
+        .bg-brand-blue-darker { background-color: #005082; }
+        .border-brand-blue-darker { border-color: #005082; }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-2xl">
+
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold brand-blue-darker mb-2">Subnet Calculator</h1>
+            <p class="text-lg text-gray-600">กรอก IP Address และ Prefix เพื่อคำนวณข้อมูลเครือข่าย</p>
+        </header>
+
+        <main>
+            <!-- Input Card -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                    <div class="md:col-span-2">
+                        <label for="ipAddress" class="block text-sm font-medium text-gray-700 mb-1">IP Address</label>
+                        <input type="text" id="ipAddress" placeholder="เช่น 192.168.10.1" value="192.168.10.0" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="prefix" class="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                        <div class="flex items-center">
+                            <span class="text-gray-500 mr-2">/</span>
+                            <input type="number" id="prefix" min="0" max="32" placeholder="24" value="24" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+                <button id="calculateBtn" class="mt-6 w-full bg-brand-blue-darker text-white font-bold py-3 px-4 rounded-md hover:bg-opacity-90 transition-colors">
+                    คำนวณ
+                </button>
+            </div>
+
+            <!-- Result Card -->
+            <div id="resultCard" class="bg-white rounded-lg shadow-md p-6 hidden">
+                <h2 class="text-2xl font-bold brand-blue-darker mb-6 border-b pb-3">ผลลัพธ์</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Network Address</h3>
+                        <p id="networkAddress" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Broadcast Address</h3>
+                        <p id="broadcastAddress" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">First Usable IP</h3>
+                        <p id="firstIp" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-500">Last Usable IP</h3>
+                        <p id="lastIp" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">Subnet Mask</h3>
+                        <p id="subnetMask" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <h3 class="text-sm font-medium text-gray-500">จำนวนโฮสต์ที่ใช้งานได้</h3>
+                        <p id="hostCount" class="text-xl font-mono font-semibold"></p>
+                    </div>
+                </div>
+                 <div id="note" class="mt-6 text-sm text-gray-600 bg-gray-100 p-3 rounded-md"></div>
+            </div>
+             <!-- Error Message -->
+            <div id="errorCard" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md hidden">
+                <p id="errorMessage"></p>
+            </div>
+        </main>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>สร้างและพัฒนาเพื่อการศึกษา</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // Helper function to convert an IP string to a 32-bit integer
+        function ipToInt(ip) {
+            return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+        }
+
+        // Helper function to convert a 32-bit integer to an IP string
+        function intToIp(int) {
+            return [(int >>> 24) & 255, (int >>> 16) & 255, (int >>> 8) & 255, int & 255].join('.');
+        }
+        
+        // Main calculation function
+        function calculateSubnet() {
+            const ipAddressInput = document.getElementById('ipAddress').value;
+            const prefixInput = parseInt(document.getElementById('prefix').value, 10);
+            
+            const resultCard = document.getElementById('resultCard');
+            const errorCard = document.getElementById('errorCard');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // --- Input Validation ---
+            const ipRegex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+            if (!ipRegex.test(ipAddressInput)) {
+                errorMessage.textContent = 'รูปแบบ IP Address ไม่ถูกต้อง';
+                errorCard.classList.remove('hidden');
+                resultCard.classList.add('hidden');
+                return;
+            }
+
+            if (isNaN(prefixInput) || prefixInput < 0 || prefixInput > 32) {
+                errorMessage.textContent = 'ค่า Prefix ต้องอยู่ระหว่าง 0 ถึง 32';
+                errorCard.classList.remove('hidden');
+                resultCard.classList.add('hidden');
+                return;
+            }
+            
+            errorCard.classList.add('hidden');
+
+            // --- Calculations ---
+            const ipInt = ipToInt(ipAddressInput);
+            const prefix = prefixInput;
+            
+            // Subnet Mask
+            const maskInt = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+            const subnetMask = intToIp(maskInt);
+
+            // Network Address
+            const networkInt = (ipInt & maskInt) >>> 0;
+            const networkAddress = intToIp(networkInt);
+
+            // Broadcast Address
+            const broadcastInt = (networkInt | (~maskInt)) >>> 0;
+            const broadcastAddress = intToIp(broadcastInt);
+
+            // Host Count
+            let hostCount;
+            if (prefix === 31) {
+                hostCount = 2;
+            } else if (prefix === 32) {
+                hostCount = 1;
+            } else {
+                hostCount = Math.pow(2, 32 - prefix) - 2;
+            }
+
+            // First and Last IP
+            let firstIp = '-';
+            let lastIp = '-';
+            let noteText = '';
+
+            if (prefix < 31) {
+                firstIp = intToIp(networkInt + 1);
+                lastIp = intToIp(broadcastInt - 1);
+            } else if (prefix === 31) {
+                firstIp = networkAddress;
+                lastIp = broadcastAddress;
+                noteText = 'หมายเหตุ: /31 เป็นกรณีพิเศษ (RFC 3021) สำหรับ Point-to-Point Links ไม่มี Network/Broadcast Address';
+            } else { // prefix === 32
+                firstIp = '-';
+                lastIp = '-';
+                noteText = 'หมายเหตุ: /32 เป็นการระบุ Host Address เดียว ไม่ใช่เครือข่าย';
+            }
+
+
+            // --- Display Results ---
+            document.getElementById('networkAddress').textContent = networkAddress;
+            document.getElementById('broadcastAddress').textContent = (prefix < 31) ? broadcastAddress : '-';
+            document.getElementById('firstIp').textContent = firstIp;
+            document.getElementById('lastIp').textContent = lastIp;
+            document.getElementById('subnetMask').textContent = subnetMask;
+            document.getElementById('hostCount').textContent = hostCount.toLocaleString();
+            
+            const noteElement = document.getElementById('note');
+            if (noteText) {
+                noteElement.textContent = noteText;
+                noteElement.classList.remove('hidden');
+            } else {
+                noteElement.classList.add('hidden');
+            }
+
+            resultCard.classList.remove('hidden');
+        }
+
+        document.getElementById('calculateBtn').addEventListener('click', calculateSubnet);
+        
+        // Initial calculation on page load
+        calculateSubnet();
+    </script>
+
+</body>
+</html>
